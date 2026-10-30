@@ -1,4 +1,3 @@
-
 FROM python:3.11-slim
 
 WORKDIR /app
@@ -7,8 +6,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py .
-COPY fraud_model.joblib .
 COPY database.py .
+COPY fraud_model.joblib .
+COPY templates/ ./templates/
 
 EXPOSE 5000
 

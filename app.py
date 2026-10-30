@@ -1,5 +1,7 @@
 
 from pathlib import Path
+from database import create_table
+from flask import render_template
 import sqlite3
 
 import joblib
@@ -11,6 +13,7 @@ DB_PATH = BASE_DIR / "fraud_predictions.db"
 
 model = joblib.load(BASE_DIR / "fraud_model.joblib")
 app = Flask(__name__)
+create_table()
 
 
 def save_prediction(prediction, probability):
@@ -57,6 +60,17 @@ def predict():
 @app.route("/dashboard")
 def dashboard():
     with sqlite3.connect(DB_PATH) as conn:
+
+        total = conn.execute(
+            "SELECT COUNT(*) FROM predictions"
+        ).fetchone()[0]
+
+        fraud_count = conn.execute(
+            "SELECT COUNT(*) FROM predictions WHERE prediction = 1"
+        ).fetchone()[0]
+
+        legitimate_count = total - fraud_count
+
         rows = conn.execute("""
             SELECT id, prediction, fraud_probability
             FROM predictions
@@ -64,27 +78,14 @@ def dashboard():
             LIMIT 50
         """).fetchall()
 
-    html = """
-    <h1>Fraud Detection Dashboard</h1>
-    <p>Latest saved transaction predictions</p>
-    <table border="1" cellpadding="8">
-        <tr>
-            <th>ID</th>
-            <th>Prediction</th>
-            <th>Fraud Probability</th>
-        </tr>
-    """
-
-    for row_id, prediction, probability in rows:
-        result = "Likely Fraud" if prediction == 1 else "Likely Legitimate"
-        html += (
-            f"<tr><td>{row_id}</td><td>{result}</td>"
-            f"<td>{probability:.2%}</td></tr>"
-        )
-
-    html += "</table>"
-    return html
+    return render_template(
+        "dashboard.html",
+        total=total,
+        fraud_count=fraud_count,
+        legitimate_count=legitimate_count,
+        rows=rows
+    )
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
